@@ -42,13 +42,19 @@ Now that the build is complete and we have the metadata from the CMake API JSON 
 cmake-spdx takes the following arguments:
 
 ```
-python3 main.py <path-to-cmake-api-index.json> <path-to-top-level-sources> <spdx-output-dir> <spdx-namespace-prefix>
+python3 main.py \
+  --build-dir <path-to-cmake-build-dir> \
+  --output-dir <spdx-output-dir> \
+  --ns <spdx-namespace-prefix>
 ```
 
 For the proof-of-concept run, I called it with:
 
 ```
-> python3 main.py api-example-reply/api/v1/reply/index-2020-08-29T18-34-19-0138.json /home/steve/programming/zephyr/zephyrproject/ ./scratch/ https://swinslow.net/zephyr/
+> python3 main.py \
+  --build-dir api-example-reply \
+  --output-dir ./scratch/ \
+  --ns 'https://swinslow.net/zephyr/'
 ```
 
 The arguments are:

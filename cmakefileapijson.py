@@ -225,7 +225,7 @@ def parseTargetArchive(target, js):
     if archive_dict == {}:
         return
     target.archive_lto = archive_dict.get("lto", False)
- 
+
     fragments_arr = archive_dict.get("commandFragments", [])
     for fragment_dict in fragments_arr:
         fragment = cmakefileapi.TargetCommandFragment()

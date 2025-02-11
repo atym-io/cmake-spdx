@@ -28,7 +28,8 @@ class BuilderDocumentConfig:
         self.packageConfigs = {}
 
 class BuilderPackageConfig:
-    def __init__(self):
+
+    def __init__(self, excludeDirs: list[str]):
         super(BuilderPackageConfig, self).__init__()
 
         #####
@@ -64,7 +65,7 @@ class BuilderPackageConfig:
         self.scandir = ""
 
         # directories whose files should not be included
-        self.excludeDirs = [".git/"]
+        self.excludeDirs = excludeDirs
 
         # directories whose files should be included, but not scanned
         # FIXME not yet enabled
@@ -443,12 +444,12 @@ def outputSPDX(doc, spdxPath):
     try:
         with open(spdxPath, 'w') as f:
             # write document creation info section
-            f.write(f"""SPDXVersion: SPDX-2.2
+            f.write(f"""SPDXVersion: SPDX-2.3
 DataLicense: CC0-1.0
 SPDXID: SPDXRef-DOCUMENT
 DocumentName: {doc.config.documentName}
 DocumentNamespace: {doc.config.documentNamespace}
-Creator: Tool: cmake-spdx
+Creator: Tool: cmake-spdx-0.0.1
 Created: {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
 """)
             # write any external document references
