@@ -2,12 +2,28 @@
 
 import hashlib
 import os
-import sys
 
 from cmakefileapi import TargetType
 from cmakefileapijson import parseReply
 from spdx.builder import BuilderDocumentConfig, BuilderPackageConfig, convertToSPDXIDSafe, makeSPDX
 from spdx.relationships import outputSPDXRelationships
+
+class Config:
+    """
+    Configuration for CMake SBOM generation
+    """
+
+    def __init__(self,
+                 replyIndexPath: str,
+                 spdxOutputDir: str,
+                 spdxNamespacePrefix: str,
+                 excludeDirs: list[str],
+                 documentNamePrefix: str = ""):
+        self.replyIndexPath = replyIndexPath
+        self.spdxOutputDir = spdxOutputDir
+        self.spdxNamespacePrefix = spdxNamespacePrefix
+        self.excludeDirs = excludeDirs
+        self.documentNamePrefix = documentNamePrefix
 
 def getCmakeRelationships(cm):
     """
@@ -61,7 +77,7 @@ def getCmakeRelationships(cm):
                             break
     return rlns
 
-def makeCmakeSpdx(cm, srcRootDirs, spdxOutputDir, spdxNamespacePrefix):
+def makeCmakeSpdx(config: Config, cm, srcRootDirs, spdxOutputDir, spdxNamespacePrefix):
     """
     Parse Cmake data and scan source / build directories, and create a
     corresponding SPDX tag-value document.
@@ -71,19 +87,20 @@ def makeCmakeSpdx(cm, srcRootDirs, spdxOutputDir, spdxNamespacePrefix):
         - srcRootDirs: mapping of package SPDX ID (without "SPDXRef-") =>
                        sources root dir
         - spdxOutputDir: output directory where SPDX documents will be written
-        - spdxNamespacePrefix: prefix for SPDX Document Namespace (will have 
+        - spdxNamespacePrefix: prefix for SPDX Document Namespace (will have
             "sources" and "build" appended); see Document Creation Info
             section in SPDX spec for more information
     Returns: True on success, False on failure; note that failure may still
              produce one or more partial SPDX documents
     """
     # create SPDX file for sources
-    srcSpdxPath = os.path.join(spdxOutputDir, "sources.spdx")
+    srcDocName = f"{config.documentNamePrefix}-sources" if config.documentNamePrefix else "sources"
+    srcSpdxPath = os.path.join(spdxOutputDir, srcDocName + ".spdx")
     srcDocCfg = BuilderDocumentConfig()
-    srcDocCfg.documentName = "sources"
+    srcDocCfg.documentName = srcDocName
     srcDocCfg.documentNamespace = os.path.join(spdxNamespacePrefix, "sources")
     for pkgID, pkgRootDir in srcRootDirs.items():
-        srcPkgCfg = BuilderPackageConfig()
+        srcPkgCfg = BuilderPackageConfig(excludeDirs=config.excludeDirs.copy())
         srcPkgCfg.packageName = pkgID + " sources"
         srcPkgCfg.spdxID = "SPDXRef-" + pkgID
         srcPkgCfg.doSHA256 = True
@@ -110,12 +127,13 @@ def makeCmakeSpdx(cm, srcRootDirs, spdxOutputDir, spdxNamespacePrefix):
     fileRlns = getCmakeRelationships(cm)
 
     # create SPDX file for build
-    buildSpdxPath = os.path.join(spdxOutputDir, "build.spdx")
+    buildDocName = f"{config.documentNamePrefix}-build" if config.documentNamePrefix else "build"
+    buildSpdxPath = os.path.join(spdxOutputDir, buildDocName + ".spdx")
     buildDocCfg = BuilderDocumentConfig()
-    buildDocCfg.documentName = "build"
+    buildDocCfg.documentName = buildDocName
     buildDocCfg.documentNamespace = os.path.join(spdxNamespacePrefix, "build")
 
-    buildPkgCfg = BuilderPackageConfig()
+    buildPkgCfg = BuilderPackageConfig(excludeDirs=config.excludeDirs.copy())
     buildPkgCfg.packageName = "build"
     buildPkgCfg.spdxID = "SPDXRef-build"
     buildPkgCfg.doSHA256 = True
@@ -147,7 +165,7 @@ def makeCmakeSpdx(cm, srcRootDirs, spdxOutputDir, spdxNamespacePrefix):
 
     return True
 
-def makeSpdxFromCmakeReply(replyIndexPath, spdxOutputDir, spdxNamespacePrefix):
+def makeSpdxFromCmakeReply(config: Config):
     """
     Parse Cmake data to determine source / build directories, and call
     makeCmakeSpdx to create the corresponding SPDX tag-value document.
@@ -161,6 +179,11 @@ def makeSpdxFromCmakeReply(replyIndexPath, spdxOutputDir, spdxNamespacePrefix):
     Returns: True on success, False on failure; note that failure may still
              produce one or more partial SPDX documents
     """
+
+    replyIndexPath = config.replyIndexPath
+    spdxOutputDir = config.spdxOutputDir
+    spdxNamespacePrefix = config.spdxNamespacePrefix
+
     # get CMake info from build
     cm = parseReply(replyIndexPath)
 
@@ -199,4 +222,4 @@ def makeSpdxFromCmakeReply(replyIndexPath, spdxOutputDir, spdxNamespacePrefix):
         srcRootDirs[pkgID] = srcRootDir
 
     # scan and create SPDX document
-    return makeCmakeSpdx(cm, srcRootDirs, spdxOutputDir, spdxNamespacePrefix)
+    return makeCmakeSpdx(config, cm, srcRootDirs, spdxOutputDir, spdxNamespacePrefix)
